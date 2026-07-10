@@ -188,7 +188,6 @@ function scanSubdirectories(directory) {
  */
 
 function getOutput() {
-  if (isExport()) return 'export'
   if (process.env.NEXT_BUILD_STANDALONE === 'true') return 'standalone'
   return undefined
 }
