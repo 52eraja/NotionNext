@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkStrIsNotionId, getLastPartOfUrl } from '@/lib/utils'
 import { idToUuid } from 'notion-utils'
 import BLOG from './blog.config'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 /**
  * Clerk 身份验证中间件
@@ -46,22 +47,8 @@ const noAuthMiddleware = async (req: NextRequest, ev: any) => {
   return NextResponse.next()
 }
 
-// 动态导入 Clerk，避免在没有 Clerk 配置时顶层静态导入导致构建/运行时失败
-let clerkMiddleware: any = null
-let createRouteMatcher: any = null
-if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const clerk = require('@clerk/nextjs/server')
-    clerkMiddleware = clerk.clerkMiddleware
-    createRouteMatcher = clerk.createRouteMatcher
-  } catch {
-    // Clerk 包不可用时忽略，将走 noAuthMiddleware 分支
-  }
-}
-
 // 限制登录访问的路由
-const isTenantRoute = createRouteMatcher
+const isTenantRoute = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? createRouteMatcher([
       '/user/organization-selector(.*)',
       '/user/orgid/(.*)',
@@ -71,17 +58,17 @@ const isTenantRoute = createRouteMatcher
   : () => false
 
 // 限制权限访问的路由
-const isTenantAdminRoute = createRouteMatcher
+const isTenantAdminRoute = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? createRouteMatcher(['/admin/(.*)/memberships', '/admin/(.*)/domain'])
   : () => false
 
 /**
  * 鉴权中间件
  */
-const authMiddleware = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && clerkMiddleware
+const authMiddleware = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   ? clerkMiddleware((auth: any, req: NextRequest) => {
       const { userId } = auth()
-      // 处理 /dashboard 路由的登录保护
+      // 处理 /dashboard 路径的登录保护
       if (isTenantRoute(req)) {
         if (!userId) {
           // 用户未登录，重定向到 /sign-in
