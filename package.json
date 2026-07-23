@@ -140,6 +140,7 @@
     "zod": "^4.4.3"
   },
   "resolutions": {
+    "@esbuild/linux-x64": "^0.25.0",
     "axios": ">=0.21.1",
     "esbuild": "^0.25.0",
     "flatted": "^3.4.2",

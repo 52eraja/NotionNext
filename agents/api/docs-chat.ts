@@ -15,11 +15,6 @@ type Env = {
   DOCS_CHAT_MAX_TOKENS?: string
 }
 
-type PagesContext = {
-  request: Request
-  env: Env
-}
-
 type ChatRequestBody = {
   messages?: UIMessage[]
   system?: string
@@ -63,18 +58,32 @@ const maxOutputTokens = (value: string | undefined) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_TOKENS
 }
 
-export const onRequestOptions = ({ request, env }: PagesContext) =>
-  new Response(null, {
-    status: 204,
-    headers: corsHeaders(request, env)
-  })
+// EdgeOne Makers Agent Runtime handler for docs-chat
+export async function onRequest(context: {
+  request: Request
+  env: Env
+  store?: unknown
+  signal?: AbortSignal
+}) {
+  const { request, env } = context
+  const method = request.method
 
-export const onRequestPost = async ({ request, env }: PagesContext) => {
   const headers = corsHeaders(request, env)
+
+  if (method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers
+    })
+  }
+
+  if (method !== 'POST') {
+    return json({ error: 'Method not allowed.' }, { status: 405, headers })
+  }
 
   if (!env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return json(
-      { error: 'Missing GOOGLE_GENERATIVE_AI_API_KEY in Cloudflare Pages settings.' },
+      { error: 'Missing GOOGLE_GENERATIVE_AI_API_KEY environment variable.' },
       { status: 500, headers }
     )
   }
@@ -99,10 +108,11 @@ export const onRequestPost = async ({ request, env }: PagesContext) => {
   })
 
   return createUIMessageStreamResponse({
-    headers,
+    headers: {
+      ...headers,
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no'
+    },
     stream
   })
 }
-
-export const onRequest = () =>
-  json({ error: 'Method not allowed.' }, { status: 405 })
