@@ -1,4 +1,3 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkStrIsNotionId, getLastPartOfUrl } from '@/lib/utils'
 import { idToUuid } from 'notion-utils'
@@ -11,20 +10,6 @@ export const config = {
   // 这里设置白名单，防止静态资源被拦截
   matcher: ['/((?!.*\\..*|_next|/sign-in|/auth).*)', '/', '/(api|trpc)(.*)']
 }
-
-// 限制登录访问的路由
-const isTenantRoute = createRouteMatcher([
-  '/user/organization-selector(.*)',
-  '/user/orgid/(.*)',
-  '/dashboard',
-  '/dashboard/(.*)'
-])
-
-// 限制权限访问的路由
-const isTenantAdminRoute = createRouteMatcher([
-  '/admin/(.*)/memberships',
-  '/admin/(.*)/domain'
-])
 
 /**
  * 没有配置权限相关功能的返回
@@ -60,11 +45,41 @@ const noAuthMiddleware = async (req: NextRequest, ev: any) => {
   }
   return NextResponse.next()
 }
+
+// 动态导入 Clerk，避免在没有 Clerk 配置时顶层静态导入导致构建/运行时失败
+let clerkMiddleware: any = null
+let createRouteMatcher: any = null
+if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const clerk = require('@clerk/nextjs/server')
+    clerkMiddleware = clerk.clerkMiddleware
+    createRouteMatcher = clerk.createRouteMatcher
+  } catch {
+    // Clerk 包不可用时忽略，将走 noAuthMiddleware 分支
+  }
+}
+
+// 限制登录访问的路由
+const isTenantRoute = createRouteMatcher
+  ? createRouteMatcher([
+      '/user/organization-selector(.*)',
+      '/user/orgid/(.*)',
+      '/dashboard',
+      '/dashboard/(.*)'
+    ])
+  : () => false
+
+// 限制权限访问的路由
+const isTenantAdminRoute = createRouteMatcher
+  ? createRouteMatcher(['/admin/(.*)/memberships', '/admin/(.*)/domain'])
+  : () => false
+
 /**
  * 鉴权中间件
  */
-const authMiddleware = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  ? clerkMiddleware((auth, req) => {
+const authMiddleware = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && clerkMiddleware
+  ? clerkMiddleware((auth: any, req: NextRequest) => {
       const { userId } = auth()
       // 处理 /dashboard 路由的登录保护
       if (isTenantRoute(req)) {
@@ -78,7 +93,7 @@ const authMiddleware = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
       // 处理管理员相关权限保护
       if (isTenantAdminRoute(req)) {
-        auth().protect(has => {
+        auth().protect((has: any) => {
           return (
             has({ permission: 'org:sys_memberships:manage' }) ||
             has({ permission: 'org:sys_domains_manage' })

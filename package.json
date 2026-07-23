@@ -95,10 +95,11 @@
     "react-hotkeys-hook": "^4.6.2",
     "react-notion-x": "7.10.0",
     "react-tweet-embed": "~2.0.0",
-    "remixicon-react": "^1.0.0"
+    "remixicon-react": "^1.0.0",
+    "ai": "^7.0.19",
+    "@ai-sdk/google": "^4.0.11"
   },
   "devDependencies": {
-    "@ai-sdk/google": "^4.0.11",
     "@ai-sdk/vue": "^4.0.19",
     "@lhci/cli": "^0.15.1",
     "@netlify/plugin-nextjs": "^5.15.11",
@@ -110,7 +111,6 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@waline/client": "^3.13.0",
-    "ai": "^7.0.19",
     "autoprefixer": "^10.5.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.57.1",

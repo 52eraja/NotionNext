@@ -1,6 +1,5 @@
 {
-  "buildCommand": "yarn install --ignore-optional && yarn build",
-  "installCommand": "yarn install --ignore-optional",
+  "buildCommand": "yarn build",
   "outputDirectory": ".next",
   "nodeVersion": "20.18.0",
   "agents": {
